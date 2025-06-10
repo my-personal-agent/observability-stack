@@ -1,0 +1,44 @@
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      serviceMonitorSelectorNilUsesHelmValues: false
+      ruleSelectorNilUsesHelmValues: false
+
+  grafana:
+    enabled: true
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+      datasources:
+        enabled: true
+        label: grafana_datasource
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+    dashboardsConfigMaps:
+      default: grafana-datasources
+    defaultDashboardsEnabled: false
+
+  prometheusOperator:
+    tls:
+      enabled: false
+
+loki-stack:
+  enabled: true
+  grafana:
+    enabled: false
+  promtail:
+    enabled: true
+    config:
+      clients:
+        - url: http://loki.monitoring.svc:3100/loki/api/v1/push

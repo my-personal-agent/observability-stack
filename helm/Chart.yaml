@@ -1,0 +1,12 @@
+apiVersion: v2
+name: observability-stack
+description: Unified stack for Grafana, Prometheus, Loki (log + metric observability)
+type: application
+version: 0.1.0
+dependencies:
+  - name: kube-prometheus-stack
+    version: 73.2.0
+    repository: https://prometheus-community.github.io/helm-charts
+  - name: loki-stack
+    version: 2.10.2
+    repository: https://grafana.github.io/helm-charts

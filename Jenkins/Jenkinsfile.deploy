@@ -1,0 +1,61 @@
+pipeline {
+  agent {
+    kubernetes {
+      cloud "${params.TARGET_ENV}-cluster"
+      inheritFrom "helm-agent"
+      defaultContainer 'helm'
+    }
+  }
+
+  environment {
+    REGISTRY_PATH = "${env.DEPLOYED_REGISTRY_PATH}"
+  }
+
+  stages {
+    stage('Check Helm CLI') {
+      steps {
+        sh 'helm version'
+      }
+    }
+
+    stage('Lint Server') {
+      steps {
+        withCredentials([file(credentialsId: "${params.TARGET_ENV}-kubeconfig", variable: 'KUBECONFIG')]) {
+          sh """
+            helm lint helm/ -f helm/values-${params.TARGET_ENV}.yaml
+          """
+        }
+      }
+    }
+
+    stage('Deploy Server') {
+      steps {
+        withCredentials([file(credentialsId: "${params.TARGET_ENV}-kubeconfig", variable: 'KUBECONFIG')]) {
+          sh """
+            helm upgrade --install observability-stack helm/ \\
+              -n default \\
+              -f helm/values-${params.TARGET_ENV}.yaml
+          """
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo "observability-stack deployed to ${params.TARGET_ENV}"
+    }
+    failure {
+      withCredentials([file(credentialsId: "${params.TARGET_ENV}-kubeconfig", variable: 'KUBECONFIG')]) {
+        echo "Deployment failed for observability-stack in ${params.TARGET_ENV}"
+        script {
+          def release = params.TARGET_SERVICE
+          echo "Attempting to rollback ${release} in namespace default"
+          sh """
+            helm rollback ${release} --namespace default || echo 'No rollback performed (maybe first install failed)'
+          """
+        }
+      }
+    }
+  }
+}
